@@ -1,0 +1,318 @@
+---
+title: "A1 submission"
+author: '22804897'
+date: '2023'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preliminary steps
+
+```{r init, include=FALSE}
+library(tidyverse)
+library(tree)
+library(CORElearn)
+options(scipen=999)
+```
+
+### Data import, checking dimensions and data types, and setting the seed for sampling
+```{r import data}
+main_data <- read.csv('A1_data.csv', header=TRUE, stringsAsFactors = TRUE)
+dim(main_data)
+str(main_data)
+set.seed(7)
+```
+
+### Sampling the data, sorting by Identifier and extracting the 1^st^, 10^th^, 20^th^ and 100^th^ Identifier values
+```{r sample data}
+test_data <- sample_n(main_data, 2500, replace = FALSE)
+test_data <- test_data[order(test_data$Identifier, decreasing = FALSE),]
+
+test_data[1,]$Identifier
+test_data[10,]$Identifier
+test_data[20,]$Identifier
+test_data[100,]$Identifier
+```
+
+# Questions
+
+## Question 1
+
+```{r question 1}
+mean(test_data$Price)
+```
+
+## Question 2
+
+```{r question 2}
+boxplot(test_data$Price, main = "Price distribution", xlab = "Price", col = "orange", border = "brown", horizontal = TRUE)
+
+quartiles <- quantile(test_data$Price)
+quartiles
+
+minPrice <- quartiles[1]
+maxPrice <- quartiles[5]
+Range <- maxPrice - minPrice
+
+quartile1 <- quartiles[2]
+names(quartile1) <- NULL
+quartile1
+
+quartile3 <- quartiles[4]
+names(quartile3) <- NULL
+quartile3
+
+IQR <- quartile3 - quartile1
+```
+The price distribution of the properties has a wide range from the lowest price being R`r minPrice`.00 to the largest being R`r maxPrice`.00, i.e. the Range is R`r Range`.00. However, most of the properties prices range between R`r quartile1`.00 and R`r quartile3`.00, with the Interquartile Range being R`r IQR`.00.
+
+## Question 3
+
+```{r question 3}
+ggplot(data = test_data, aes(x = Type, fill = Type)) + geom_bar() + labs(title = "Number of each type of property", x = "Type", y = "Amount of properties") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Question 4
+
+```{r question 4}
+ggplot(data = test_data, aes(x = Type, y = Price, fill = Type)) + geom_boxplot() + labs(title = "How the distribution of price differs according to the property type") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Question 5
+
+```{r question 5}
+numPropertiesAndAvgPrice <- test_data %>% group_by(Area) %>% summarize(count = n(), mean(Price))
+colnames(numPropertiesAndAvgPrice) <- c("Area", "Number of properties", "Average price of properties")
+as.data.frame(numPropertiesAndAvgPrice)
+```
+Based on the information in the table above we can deduce that, generally speaking, the agricultural properties have the lowest selling price, residential properties have the highest selling price and the commercial and industrial properties' selling prices fall in between with commercial following agricultural and industrial following commercial.
+
+## Question 6
+
+```{r question 6}
+missing_values <- sum(is.na(test_data$Street_front))
+cordata <- test_data %>% drop_na(Street_front)
+cor_Street_front_and_Size <- round(cor(cordata$Street_front, cordata$Size), digits = 3)
+```
+6.1) There are **`r missing_values`** observations that have missing values for the *Street_front* variable.
+
+6.3) Correlation coefficient = **`r cor_Street_front_and_Size`**, i.e., *Street_front* and *Size* have a ***moderate positive linear relationship***.
+
+6.4:
+```{r question 6.4 - scatter plot}
+ggplot(data = cordata, mapping = aes(x = Street_front, y = Size)) + geom_point(color="purple") + labs(title = "Relationship between Street_front and Size", x = "Street_front", y = "Size") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+Based on the plot above, it does appear that there are outliers, i.e. extremely high or extremely low data points relative to the nearest data point and the rest of the neighboring co-existing values.
+
+Futhermore, based on the computations below for identifying outliers using the IQR method, we can confirm that there are indeed outliers in the data graph:
+
+```{r question 6.4 - outliers}
+sf_quartile1 <- quantile(cordata$Street_front, 0.25)
+
+sf_quartile3 <- quantile(cordata$Street_front, 0.75)
+
+IQR_1 <- sf_quartile3 - sf_quartile1
+
+Street_front_outliers <- cordata[(cordata$Street_front < sf_quartile1 - (1.5 * IQR_1)) | (cordata$Street_front > sf_quartile3 + (1.5 * IQR_1)), ]
+Street_front_outliers$Street_front
+
+sz_quartile1 <- quantile(cordata$Size, 0.25)
+sz_quartile3 <- quantile(cordata$Size, 0.75)
+IQR_2 <- sz_quartile3 - sz_quartile1
+Size_outliers <- cordata[(cordata$Size < sz_quartile1 - (1.5 * IQR_2)) | (cordata$Size > sz_quartile3 + (1.5 * IQR_2)), ]
+Size_outliers$Size
+```
+
+Handling outliers:
+
+* Removing outliers
+    + By identifying outliers as seen above using the IQR method, you can directly filter out outliers.
+
+* Winsorizing
+    + This involves setting the outliers to a specified percentile of the data. For example, you can set the outliers to the 5th and 95th percentiles.
+    
+* Imputation
+    + You can replace the outlier values with statistical measures such as mean, median, or mode.
+
+## Question 7
+
+```{r question 7}
+test_data$Water
+summary(test_data$Water)
+sum = 0
+for (i in test_data$Water) {
+  if (i == 0){
+    sum = sum + 1
+  }
+}
+sum
+ggplot(data = test_data, aes(x = Type, y = Water)) + geom_point() + labs(title = "Mean Water of each property Type") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The following explains the exploration of the Water variable above (in order) and the conclusion: 
+
+1. Displaying what the Water value is for each observation in the data set.
+    + Discovering that every observation has the value **1**.
+2. Viewing the summary statistics of the Water variable in the data set.
+    + All the statistics produce a **1**.
+3. Computing the total number of observations with the value of **0** for the Water variable (meaning the observation/property does not have a municipal water connection)
+    + Outputting a total of **`r sum`**.
+4. Plotting the mean Water of each property Type
+    + Each property Type has a mean of **1** for the Water variable.
+
+From this exploration of the Water variable, we can conclude that every single property in the data set has a municipal water connection therefore indicating that there is no variation in this variable so it will not be able to estimate or determine property prices.
+
+## Question 8
+
+8.1:
+
+```{r question 8}
+newdata <- mutate(test_data, transport_proximity = case_when(BusyStreet == 1 | NearRail == 1 ~ 1, BusyStreet == 0 & NearRail == 0 ~ 0), not_renovated = case_when(Year_Built==Year_Renov ~ TRUE, Year_Renov>Year_Built ~ FALSE))
+
+#select(newdata, transport_proximity, not_renovated)
+transport_proximity_1count <- sum(newdata$transport_proximity)
+renovated_count <- 2500 - sum(newdata$not_renovated)
+```
+
+8.2) There are **`r transport_proximity_1count`** properties that are on or near a busy street or near a railway line.
+
+8.3) There are **`r renovated_count`** properties that have been renovated.
+
+8.4:
+```{r question 8.4 - plot}
+x <- ggplot(data = newdata, aes(x = not_renovated, y = Price, fill = not_renovated)) + geom_boxplot() + labs(title = "How the distribution of price differs according to\n whether the property has been renovated or not") + theme(plot.title = element_text(hjust = 0.5)) + scale_fill_manual(values=c("#6A5ACD", "#56B4E9"))
+x
+#str(ggplot_build(x)$data)
+df <- ggplot_build(x)$data
+mean_prices <- data.frame(df[[1]]$middle)
+mean_price_renovated <- mean_prices[1,]
+mean_price_not_renovated<- mean_prices[2,]
+mean_price_diff <- mean_price_not_renovated - mean_price_renovated
+```
+
+Based on the plot above you can determine that, for the most part, there is not much of a difference in price distribution between renovated properties and unrenovated properties. However, the mean price of unrenovated properties (R`r mean_price_not_renovated`.00) is R`r mean_price_diff`.00 more than the mean price of renovated properties (R`r mean_price_renovated`.00). Therefore, based on this data set, you can say that renovating a property does have an impact on price in such a way that, on average, a renovated property sells for slightly less than an unrenovated property.
+
+## Question 9
+
+```{r question 9 - boxplot}
+test_data_with_outdoor_lifestyle <- mutate(test_data, outdoor_lifestyle = case_when(Braais_Fireplaces > 0 & Pool == "Yes" ~ "Both", Braais_Fireplaces == 0 & Pool == "No" ~ "None", Braais_Fireplaces > 0 & Pool == "No" ~ "Only Braais/Fireplaces", Braais_Fireplaces == 0 & Pool == "Yes" ~ "Only Pool"))
+
+plot_outdoor_lifestyle <- ggplot(data = test_data_with_outdoor_lifestyle, aes(x = outdoor_lifestyle, y = Price, fill = outdoor_lifestyle)) + geom_boxplot() + labs(title = "How the distribution of price differs according to whether\nproperties have braais/fireplaces and pools, only braais/fireplaces,\nonly pools or none") + theme(plot.title = element_text(hjust = 0.5)) + scale_fill_manual(values=c("#285830", "#F4C431", "#2E86AB", "#D62828"))
+plot_outdoor_lifestyle
+
+df1 <- ggplot_build(plot_outdoor_lifestyle)$data
+min <- data.frame(df1[[1]]$ymin)
+
+q1 <- data.frame(df1[[1]]$lower)
+
+mean_prices <- data.frame(df1[[1]]$middle)
+
+q3 <- data.frame(df1[[1]]$upper)
+
+max <- data.frame(df1[[1]]$ymax)
+
+```
+
+**Table representing the statistics of the boxplot above (quantile for each attribute of the *outdoor_lifestyle* variable):**
+
+```{r question 9 - table}
+outdoor_lifestyle_df <- cbind(min,q1,mean_prices,q3,max)
+rownames(outdoor_lifestyle_df) <- c("Both", "None", "Only braais/fireplaces", "Only pool")
+colnames(outdoor_lifestyle_df) <- c("Min", "Quartile 1", "Mean", "Quartile 3", "Max")
+outdoor_lifestyle_df
+```
+
+From the boxplot and table above, we can clearly see that properties with both braais/fireplaces and a pool have a significantly higher price in every aspect of the distribution (the minimum price, quartile 1, mean, quartile 3 and maximum price) compared to properties that have neither, and also noticeably higher prices on average than properties with only a pool or braais/fireplaces. Therefore, on average, properties with both braais/fireplaces and a pool have the highest price, then it's properties with only braais/fireplaces, then it's properties with only a pool and then properties with neither. Thus, we can deduce that the presence of braais/fireplaces and pools does have an impact on the price of a property, they increase the price of the property, on average. They *significantly* increase the price of a property if both braais/fireplaces and pools are present.
+
+## Question 10
+
+```{r question 10}
+sold_data <- mutate(test_data, month_year_sold = my(paste(Month_sold, Year_sold, sep="-")))
+#select(sold_data, Month_sold, Year_sold, month_year_sold)
+ggplot(data = sold_data, mapping = aes(x = month_year_sold, y = Price)) + geom_point(color="purple") + labs(title = "Relationship between the date a property was sold and its price", x = "month_year_sold", y = "Price") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+* Majority of the prices range between 600000 and 3700000.
+
+* Sales start picking up in about March and increase to the most sales at around June and July and then sales start dipping a bit until January/February, that cycle repeats.
+
+* Generally, more of the more expensive properties get sold around the middle of the year, each year.
+
+## Question 11
+
+11.1) 
+
+* Based on the results from question 9, we can determine that the *Braais_Fireplaces* variable will be significant for predicting house prices.
+
+* Since transport is a large component of most peoples daily lives, and since many people own a car/motorbike/scooter, and those people will ideally want their vehicle safe from weather damage and/or theft, I presume *Garages* would be a significant predictor for house prices.
+
+* Based on the results from question 4 of how the distribution of price differs according to the property type, and from my understanding that based on the type of property you have (apartment, single storey house, double storey house, house in estate, duplex etc.) the price will differ drastically since, for example, a house in a secured, well-maintained and beautiful estate would typically cost a lot more than a standard apartment in a block of flats. Therefore I presume *Type* will be a significant predictor on house prices.
+
+* It seems intuitive to presume that the size of your property/land/house is directly proportional to the price of the property. Even if you just think in terms of land, the bigger area of land you own, the more value it should have. Therefore I estimate that *Size* will be a significant predictor on house prices.
+
+11.2)
+
+**Attribute evaluation table of the test_data data set using the information gain method (decreasing order, from highest information gain to lowest and read from left to right):**
+
+```{r question 11.2 - attribute evaluation}
+sort(round(attrEval(formula = Price_cat ~ Month_sold+Year_sold+Sale_type+Type+Area+Size+Street_front+Plot_shape+Incline+SlopeType+Condition+Year_Built+Year_Renov+Tarred_road+Culdesac+Corner+Roof_Type+Bathrooms+Bedrooms+KitchenCondition+Braais_Fireplaces+Garages+Driveway+Pool+BusyStreet+NearRail+NearGreen, data = test_data, estimator = "InfGain"), digits = 10), decreasing = TRUE)
+```
+
+```{r question 11.2 - plots}
+cordata2 <- test_data %>% drop_na(Garages)
+ggplot(data = cordata2, mapping = aes(x = Garages, y = Price)) + geom_point(color="#7DCE82") + labs(title = "Relationship between the number of garages and a property's price", x = "Number of garages", y = "Price") + theme(plot.title = element_text(hjust = 0.5))
+
+ggplot(data = test_data, mapping = aes(x = Size, y = Price)) + geom_point(color="#3CDBD3") + labs(title = "Relationship between the size of a property and its price", x = "Size", y = "Price") + theme(plot.title = element_text(hjust = 0.5)) + geom_smooth()
+```
+
+
+**Table representing the correlation coefficient between Garages and Price, Size and Price, as well as Braais_Fireplaces and Price:**
+
+```{r question 11.2 - correlation df}
+cor_garages_price <- cor(cordata2$Garages, cordata2$Price)
+cor_size_price <- cor(test_data$Size, test_data$Price)
+cor_braais_price <- cor(test_data$Braais_Fireplaces, test_data$Price)
+
+cor_df <- cbind(cor_garages_price, cor_size_price, cor_braais_price)
+rownames(cor_df) <- c("Price")
+colnames(cor_df) <- c("Garages", "Size", "Braais_Fireplaces")
+cor_df
+```
+
+I was quite spot on with my supposition for *Garages* and *Braais_Fireplaces* since those variables are in the top 5 variables (out of 27) with the highest information gain value in the attribute evaluation implying that they are significant variables for predicting house prices. Furthermore, the plot from question 9 also indicates that having braais/fireplaces in the property significantly increases the price, on average, compared to properties with no braais/fireplaces, similarly, the plot above showing the relationship between number of garages and the price shows that having more garages generally increases the property's price by a significant margin. Furthermore, in the table above showing correlation coefficients between the variables, *Garages* does indeed have a pretty strong positive linear relationship with *Price* and *Braais_Fireplaces* having a moderate positive linear relationship. Whereas with *Size* and *Type*, I slightly over-valued their significance to predict house prices in my supposition. However, they still fall in the top 10 variables (out of 27) with the highest information gain value in the attribute evaluation (with *Size* being 8th and *Type* being 10th).
+
+## Question 12
+
+12.1 and 12.2)
+
+```{r question 12 - tree construction and plot}
+tree.properties <- tree(Price_cat ~ Area+Type+Size+Corner+Bathrooms+Bedrooms+KitchenCondition+Braais_Fireplaces+Garages+Driveway+Pool, data = test_data)
+plot(tree.properties)
+text(tree.properties)
+```
+
+12.3)
+
+```{r question 12 - misclassification error rate}
+summary(tree.properties)
+ratio <- summary(tree.properties)[[7]]
+misclassification.error.rate <- round(ratio[1] / ratio[2], digits = 4)
+misclassification.error.rate
+```
+
+From the summary of the decision tree above we can see that the misclassification error rate on the training data is **`r misclassification.error.rate`**.
+
+12.4)
+
+```{r question 12 - prediction}
+new_obs <- data.frame(Area = "Residential", Type = "Single storey", Size = 1300, Corner = 0, Bathrooms = 4, Bedrooms = 5, KitchenCondition = 1, Braais_Fireplaces = 3, Garages = 2, Driveway = "Paved", Pool = "Yes", stringsAsFactors = TRUE)
+
+prediction <- predict(tree.properties, new_obs, type = 'class')
+prediction
+```
+
+The prediction of the price category of the given property is **`r prediction`**.

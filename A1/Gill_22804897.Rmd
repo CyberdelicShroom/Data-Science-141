@@ -1,0 +1,80 @@
+---
+title: "A1 submission"
+author: '22804897'
+date: '2023'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preliminary steps
+
+```{r init, include=FALSE}
+library(tidyverse)
+library(tree)
+options(scipen=999)
+```
+
+### Data import, checking dimensions and data types, and setting the seed for sampling
+```{r import data}
+main_data <- read.csv('A1_data.csv', header=TRUE, stringsAsFactors = TRUE)
+dim(main_data)
+str(main_data)
+set.seed(7)
+```
+
+### Sampling the data, sorting by Identifier and extracting the 1^st^, 10^th^, 20^th^ and 100^th^ Identifier values
+```{r sample data}
+test_data <- sample_n(main_data, 2500, replace = FALSE)
+test_data <- test_data[order(test_data$Identifier, decreasing = FALSE),]
+
+test_data[1,]$Identifier
+test_data[10,]$Identifier
+test_data[20,]$Identifier
+test_data[100,]$Identifier
+```
+
+## Question 1
+
+```{r question 1}
+mean(test_data$Price)
+```
+
+## Question 2
+
+```{r question 2}
+boxplot(test_data$Price, main = "Price distribution", xlab = "Price", col = "orange", border = "brown", horizontal = TRUE)
+
+quartiles <- quantile(test_data$Price)
+quartiles
+
+minPrice <- quartiles[1]
+maxPrice <- quartiles[5]
+Range <- maxPrice - minPrice
+
+quartile1 <- quartiles[2]
+names(quartile1) <- NULL
+quartile1
+
+quartile3 <- quartiles[4]
+names(quartile3) <- NULL
+quartile3
+
+IQR <- quartile3 - quartile1
+```
+The price distribution of the properties has a wide range from the lowest price being `r minPrice` to the largest being `r maxPrice`, i.e. the Range is `r Range`. However, most of the properties prices range between `r quartile1` and `r quartile3`, with the Interquartile Range being `r IQR`.
+
+## Question 3
+
+```{r question 3}
+ggplot(data = test_data, aes(x = test_data$Type)) + geom_bar() + labs(title = "Number of each type of property", x = "Type", y = "Amount of properties") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Question 4
+
+```{r question 4}
+
+```
+

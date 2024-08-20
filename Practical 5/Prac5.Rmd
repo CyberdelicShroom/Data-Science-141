@@ -1,0 +1,97 @@
+---
+title: "Practical 5"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r init, include=FALSE}
+library(tidyverse)
+library(DescTools)
+library(CORElearn)
+library(tree)
+library(rpart)
+library(rpart.plot)
+```
+
+```{r import data, echo=FALSE}
+churn <- read.csv('churn.csv', header=TRUE, stringsAsFactors = TRUE)
+str(churn)
+summary(churn)
+#set.seed(1234)
+#sample_of_churn <- sample_n(churn, 2000, replace = FALSE)
+#index <- sample(1:nrow(churn), 2000, replace = FALSE)
+#sample_of_churn <- churn[index,]
+#str(sample_of_churn)
+# ggplot(data = sample_of_churn, mapping = aes(x = HANDSET_PRICE, y = INCOME)) + geom_point(aes(color = LEAVE)) + labs(title = "Relationship between HANDSET_PRICE, INCOME and CHURN", x = "HANDSET_PRICE", y = "INCOME", color = "CHURN") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r entropy and info gain}
+#absolute frequencies of the classes in the LEAVE attribute:
+leavetable <- table(churn$LEAVE)
+leavetable
+#relative frequencies of the classes in the LEAVE attribute:
+#p1 for LEAVE
+p1 <- leavetable["LEAVE"] / length(churn$LEAVE)
+#p2 for STAY
+p2 <- leavetable["STAY"] / length(churn$LEAVE)
+#Based on the relative frequencies, calculate the entropy for the LEAVE attribute:
+parent_entropy <- (-1 * p1 * log2(p1)) + (-1 * p2 * log2(p2))
+parent_entropy
+#Entropy can also be calculated by using the Entropy() function in the DescTools package:
+#Entropy(table(churn$LEAVE), base = 2)
+cross_tabulation_LEAVE_COLLEGE <- table(churn$LEAVE, churn$COLLEGE)
+cross_tabulation_LEAVE_COLLEGE
+total_one <- cross_tabulation_LEAVE_COLLEGE["LEAVE","one"] + cross_tabulation_LEAVE_COLLEGE["STAY","one"]
+q1 <- cross_tabulation_LEAVE_COLLEGE["LEAVE","one"] / total_one
+q2 <- cross_tabulation_LEAVE_COLLEGE["STAY","one"] / total_one
+child1_entropy <- (-1 * q1 * log2(q1)) + (-1 * q2 * log2(q2))
+sprintf("%.10f", child1_entropy)
+
+total_zero <- cross_tabulation_LEAVE_COLLEGE["LEAVE","zero"] + cross_tabulation_LEAVE_COLLEGE["STAY","zero"]
+r1 <- cross_tabulation_LEAVE_COLLEGE["LEAVE","zero"] / total_zero
+r2 <- cross_tabulation_LEAVE_COLLEGE["STAY","zero"] / total_zero
+child0_entropy <- (-1 * r1 * log2(r1)) + (-1 * r2 * log2(r2))
+sprintf("%.10f", child0_entropy)
+
+ratio_one <- (cross_tabulation_LEAVE_COLLEGE["LEAVE","one"] + cross_tabulation_LEAVE_COLLEGE["STAY","one"])/nrow(churn)
+ratio_zero <- (cross_tabulation_LEAVE_COLLEGE["LEAVE","zero"] + cross_tabulation_LEAVE_COLLEGE["STAY","zero"])/nrow(churn)
+#This represents the IG of the COLLEGE attribute:
+information_gain <- parent_entropy - ((ratio_one*child1_entropy) + (ratio_zero*child0_entropy))
+information_gain
+#The attrEval() function in the CORElearn package evaluates the “quality” of
+#attributes, and information gain is one of the many quantities that can be calculated in
+#this way.
+sort(round(attrEval(formula = LEAVE~., data = churn, estimator = "InfGain"), digits = 10), decreasing = TRUE)
+
+#The process of identifying the best attribute to split on now continues, but separately
+#for the left branch and the right branch. Note that for the left branch, the next split is
+#based on the variable OVERAGE, whereas for the right branch it is INCOME. You can
+#verify this by calculating the information gain values; first for the left branch (that is,
+#where HOUSE <= 600 469):
+new_left_parent <- churn[which(churn$HOUSE<=600469),]
+sort(attrEval(formula = LEAVE~., data = new_left_parent, estimator = "InfGain"), decreasing = TRUE)
+#Next for the right branch, where HOUSE > 600 469:
+new_right_parent <- churn[which(churn$HOUSE>600469),]
+sort(attrEval(formula = LEAVE~., data = new_right_parent, estimator = "InfGain"), decreasing = TRUE)
+```
+
+```{r decision tree}
+tree.churn <- tree(LEAVE~., data = churn)
+summary(tree.churn)
+#You can visualise a tree model object by using the plot() function
+plot(tree.churn)
+#include the split rules on your plot by using the text() function after the plot() function call
+text(tree.churn)
+tree.churn
+
+# new_obs <- data.frame(HOUSE = 515444, OVERAGE = 63, LEFTOVER = 0, INCOME = 143501)
+# new_obs
+# predict(tree.churn, new_obs, type = "class")
+
+tree2.churn <- rpart(LEAVE~., data = churn)
+rpart.plot(tree2.churn, digits = -5)
+```

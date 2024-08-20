@@ -1,0 +1,45 @@
+library(tidyverse)
+library(ISLR)
+library(class)
+
+dim(Caravan)
+str(Caravan)
+summary(Caravan$Purchase)
+
+myattr <- scale(Caravan[,-86])
+
+var(Caravan[,1])
+var(Caravan[,2])
+var(myattr[,1])
+var(myattr[,2])
+
+mylabs <- Caravan[,86]
+mylabs
+
+test <- 1:1000
+train.attr <- myattr[-test,]
+test.attr <- myattr[test,]
+train.lab <- mylabs[-test]
+test.lab <- mylabs[test]
+
+dim(train.attr)
+dim(test.attr)
+length(train.lab)
+length(test.lab)
+
+set.seed(1)
+onenn <- knn(train.attr, test.attr, train.lab, k=1)
+table(onenn, test.lab)
+
+threenn <- knn(train.attr, test.attr, train.lab, k=3)
+table(threenn, test.lab)
+
+fivenn <- knn(train.attr, test.attr, train.lab, k=5)
+table(fivenn, test.lab)
+
+Caravan[1023,]
+Caravan[1198,]
+
+onenn_2 <- knn(train.attr, train.attr, train.lab, k=1)
+length(onenn_2)
+table(onenn_2, train.lab)

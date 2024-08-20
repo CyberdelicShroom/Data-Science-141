@@ -1,0 +1,82 @@
+---
+title: "Tutorial 5"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r init, include=FALSE}
+library(tidyverse)
+library(DescTools)
+library(CORElearn)
+library(tree)
+library(rpart)
+library(rpart.plot)
+```
+
+```{r import data}
+mushroom <- read.csv('mushroom.csv', header=TRUE, stringsAsFactors = TRUE)
+```
+
+```{r filter data}
+str(mushroom)
+summary(mushroom)
+
+NA_obs <- mushroom %>% filter_all(any_vars(. %in% c("?")))
+no_of_NA_obs <- nrow(NA_obs)
+no_of_NA_obs
+
+mushroom_without_NA <- filter(mushroom, stalk.root != "?")
+str(mushroom_without_NA)
+summary(mushroom_without_NA)
+nrow(mushroom_without_NA)
+```
+
+```{r plotting data}
+ggplot(data = mushroom_without_NA, aes(x = odor)) + geom_bar()
+ggplot(data = mushroom_without_NA, aes(x = spore.print.color)) + geom_bar()
+ggplot(data = mushroom_without_NA, aes(x = population)) + geom_bar()
+ggplot(data = mushroom_without_NA) + geom_bar(mapping = aes(x = odor, fill = spore.print.color))
+ggplot(data = mushroom_without_NA) + geom_bar(mapping = aes(x = odor, fill = spore.print.color), position = "fill")
+```
+
+```{r entropy and information gain}
+#class sizes of target variable, edible:
+#absolute frequencies of the classes in the edible attribute:
+class_sizes_of_edible <- table(mushroom_without_NA$edible)
+class_sizes_of_edible
+
+#Frequency table of edible and ring.number:
+cross_tabulation_edible_ringNumber <- table(mushroom_without_NA$edible, mushroom_without_NA$ring.number)
+cross_tabulation_edible_ringNumber
+
+#Suppose you wanted to construct a decision tree to predict whether mushrooms are
+#poisonous or edible, using information gain as splitting criterion.
+#Write code to determine what the first attribute to split on would be:
+attribute_eval <- sort(round(attrEval(formula = edible~., data = mushroom_without_NA, estimator = "InfGain"), digits = 10), decreasing = TRUE)
+attribute_eval
+
+#This will be the first attribute to split on:
+attribute_eval[1]
+
+#Frequency table of edible and odor:
+cross_tabulation_edible_odor <- table(mushroom_without_NA$edible, mushroom_without_NA$odor)
+cross_tabulation_edible_odor
+```
+
+```{r decision trees}
+tree.mushroom <- tree(edible~., data = mushroom_without_NA)
+summary(tree.mushroom)
+#You can visualise a tree model object by using the plot() function
+plot(tree.mushroom)
+#include the split rules on your plot by using the text() function after the plot() function call
+#To make sure that the factor level names that are used in your plot correspond to the actual values, include the #argument pretty = 0 in your text() function call.
+text(tree.mushroom, pretty = 0)
+tree.mushroom
+
+tree2.mushroom <- rpart(edible~., data = mushroom_without_NA, parms = list(split = "information"))
+rpart.plot(tree2.mushroom, digits = -5)
+```

@@ -1,0 +1,89 @@
+library(tree)
+library(caret)
+library(ggplot2)
+
+churn <- read.csv("churn.csv", header = TRUE, stringsAsFactors = TRUE)
+str(churn)
+
+# Basic decision tree, using the full dataset
+tree.basic <- tree(LEAVE~., data = churn)
+plot(tree.basic)
+text(tree.basic, pretty = 0)
+
+summary(tree.basic)
+
+# Complex decision tree, using the full dataset (Overfit)
+tree.over <- tree(LEAVE~., data = churn, control = tree.control(nobs = nrow(churn), mindev = 0.00015, mincut = 1))
+plot(tree.over)
+text(tree.over, pretty = 0)
+summary(tree.over)
+
+set.seed(9)
+churn_index <- sample(1:nrow(churn), size = nrow(churn) * 0.8, replace = FALSE)
+churn_train <- churn[churn_index,]
+churn_test <- churn[-churn_index,]
+str(churn_train)
+str(churn_test)
+
+# Complex tree on the training data:
+tree.train <- tree(LEAVE~., data = churn_train, control = tree.control(nobs = nrow(churn_train), mindev = 0.0002, mincut = 1))
+summary(tree.train)
+
+churn_pred <- predict(tree.train, churn_test[,-11], type = "class")
+eval.on.test.data <- table(predicted = churn_pred, actual = churn_test$LEAVE)
+misclas.er.rate1 <- 1 - ((eval.on.test.data[1,1] + eval.on.test.data[2,2]) / 4000)
+misclas.er.rate1
+
+churn_pred <- predict(tree.train, churn_train[,-11], type = "class")
+eval.on.train.data <- table(predicted = churn_pred, actual = churn_train$LEAVE)
+misclas.er.rate2 <- 1 - ((eval.on.train.data[1,1] + eval.on.train.data[2,2]) / 16000)
+misclas.er.rate2
+
+# the misclassification error rate is higher on the test data than on the training data.
+
+# Simpler tree on the training data:
+simpler.tree <- tree(LEAVE~., data = churn_train, control = tree.control(nobs = nrow(churn_train), mindev = 0.001, minsize = 100))
+summary(simpler.tree)
+
+simpler_pred <- predict(simpler.tree, churn_test[,-11], type = "class")
+eval.of.simpler.tree.on.test.data <- table(predicted = simpler_pred, actual = churn_test$LEAVE)
+misclas.er.rate3 <- 1 - ((eval.of.simpler.tree.on.test.data[1,1] + eval.of.simpler.tree.on.test.data[2,2]) / 4000)
+misclas.er.rate3
+
+simpler_pred_train <- predict(simpler.tree, churn_train[,-11], type = "class")
+eval.of.simpler.tree.on.train.data <- table(predicted = simpler_pred_train, actual = churn_train$LEAVE)
+misclas.er.rate4 <- 1 - ((eval.of.simpler.tree.on.train.data[1,1] + eval.of.simpler.tree.on.train.data[2,2]) / 16000)
+misclas.er.rate4
+
+# the misclassification error rate for the training and test data is more similar.
+
+# Train a 1NN model on the training dataset, and obtain the training as well as test accuracy:
+onenn <- knn3(LEAVE~., data = churn_train, k = 1)
+trainpred <- predict(onenn, churn_train[,-11], type = "class")
+confusionMatrix(trainpred, churn_train$LEAVE)
+testpred <- predict(onenn, churn_test[,-11], type = "class")
+confusionMatrix(testpred, churn_test$LEAVE)
+
+# Train a 300NN model on the training dataset, and obtain the training as well as test accuracy:
+three.hundred.nn <- knn3(LEAVE~., data = churn_train, k = 300)
+trainpred <- predict(three.hundred.nn, churn_train[,-11], type = "class")
+confusionMatrix(trainpred, churn_train$LEAVE)
+testpred <- predict(three.hundred.nn, churn_test[,-11], type = "class")
+confusionMatrix(testpred, churn_test$LEAVE)
+
+# Construct a fitting graph to help you find a suitable value of k to use:
+
+trainacc = rep(0, 300)
+testacc = rep(0, 300)
+for (i in 1:300) {
+  fit <- knn3(LEAVE~., data = churn_train, k = i)
+  trainpred <- predict(fit, churn_train[,-11], type = "class")
+  conf <- confusionMatrix(trainpred, churn_train$LEAVE)
+  trainacc[i] <- (conf$table[1,1] + conf$table[2,2]) / nrow(churn_train)
+  testpred <- predict(fit, churn_test[,-11], type = "class")
+  conft <- confusionMatrix(testpred, churn_test$LEAVE)
+  testacc[i] <- (conft$table[1,1] + conft$table[2,2]) / nrow(churn_test)
+}
+k <- c(1:300)
+plotdata <- data.frame(cbind(k, trainacc, testacc))
+ggplot() + geom_line(data = plotdata, mapping = aes(x = k, y = trainacc), color = "blue") + geom_line(data = plotdata, mapping = aes(x = k, y = testacc), color = "red") + labs(title = "Fitting graph for the customer churn (kNN) model", subtitle = "Training accuracy in blue and Test accuracy in red", x = "k (nr. of neighbours) ", y = "Accuracy")

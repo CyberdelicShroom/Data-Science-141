@@ -1,0 +1,74 @@
+library(tidyverse)
+library(gridExtra)
+head(cars)
+str(cars)
+summary(cars)
+
+ggplot(data = cars, mapping = aes(x = speed, y = dist))+geom_point()
+
+box1 <- ggplot(data = cars) + geom_boxplot(mapping = aes(x = speed)) + coord_flip()
+box2 <- ggplot(data = cars) + geom_boxplot(mapping = aes(x = dist)) + coord_flip()
+grid.arrange(box1, box2, ncol = 2)
+
+cor(cars$speed, cars$dist)
+
+model1 <- lm(dist~speed, data = cars)
+summary(model1)
+
+# predicted stopping distance (in feet) = -17.5791 + (3.9324 x speed of car)
+# This means that the average predicted stopping distance for a car travelling at a speed
+# of 20 miles per hour is
+
+avg_predicted_stop_dist <- -17.5791 + (3.9324 * 20)
+avg_predicted_stop_dist
+
+newdata <- data.frame(speed = 20)
+newdata
+
+predict1 <- predict(model1, newdata)
+predict1
+
+ggplot(data = cars, mapping = aes(x = speed, y = dist)) + geom_point() + geom_smooth(method = "lm")
+
+# Use a quadratic polynomial to predict a car’s stopping distance by also including
+# the square of speed in the model.
+
+model2 <- lm(dist~speed + I(speed^2), data = cars)
+summary(model2)
+
+# The summary output shows that stopping distance of a car can also be predicted using
+# the following equation:
+  #predicted stopping distance (in feet) = 2.47014 + (0.91329 x speed of car) + (0.09996 x (speed of car)^2)
+
+# This means that the average predicted stopping distance for a car travelling at a speed
+# of 20 miles per hour is:
+
+avg_predicted_stop_dist2 <- 2.47014 + (0.91329 * 20) + (0.09996 * 20^2)
+avg_predicted_stop_dist2
+
+predict2 <- predict(model2, newdata)
+predict2
+
+ggplot(data = cars, mapping = aes(x = speed, y = dist)) + geom_point() + geom_smooth(method = "lm", formula = y ~ x + I(x^2))
+
+ggplot(data = cars, mapping = aes(x = speed, y = dist)) + geom_point() + geom_smooth(method = "lm", colour = "red") + geom_smooth(method = "lm", formula = y ~ x + I(x^2))
+
+str(mtcars)
+summary(mtcars)
+
+cor(mtcars$mpg, mtcars[,-1])
+
+model3 <- lm(mpg~., data = mtcars)
+summary(model3)
+
+# The predicted regression equation is:
+# mpg = -12.30337 + (-0.11144 x cyl) + (0.01334 x disp) + … + (-0.19942 x carb)
+
+newdata2 <- data.frame(cyl=25, disp=300, hp=180, drat=4.85, wt=4, qsec=15.5,vs=0,am=1,gear=5,carb=4)
+
+#avg_predicted_mpg <- -12.30337 + (-0.11144 * newdata2$cyl) + (0.01334 * newdata2$disp) + (-0.02148 * newdata2$hp) + (0.78711 * newdata2$drat) + (-3.71530 * newdata2$wt) + (0.82104 * newdata2$qsec) + (0.31776 * newdata2$vs) + (2.52023 * newdata2$am) + (0.65541 * newdata2$gear) + (-0.19942 * newdata2$carb)
+avg_predicted_mpg <- 12.30337 + (-0.11144 * 25) + (0.01334 * 300) + (-0.02148 * 180) + (0.78711 * 4.85) + (-3.71530 * 4) + (0.82104 * 15.5) + (0.31776 * 0) + (2.52023 * 1) + (0.65541 * 5) + (-0.19942 * 4)
+avg_predicted_mpg
+
+predict3 <- predict(model3, newdata2)
+predict3
